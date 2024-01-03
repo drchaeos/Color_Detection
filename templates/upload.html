@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Color Detection</title>
+    <!-- 외부 스타일 시트 연결 -->
+    <link href="/static/styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <!-- 로고 이미지 -->
+    <div class="logo">
+        <a href="/">
+            <img alt="logo" src="/images/walk101_logo.png" />
+        </a>
+    </div>
+    <!-- 페이지 제목 -->
+    <h1 class="title">Color Detection</h1>
+    <!-- 이미지 업로드 및 색상 정보 표시 영역 -->
+    <div class="container">
+        <div class="image-section">
+            <!-- 업로드된 이미지 표시 -->
+            {% if filename %}
+            <img alt="Uploaded Image" id="uploadedImage" onclick="getImageColor(event)"
+                src="/static/uploaded_images/{{filename}}" style="max-width: 70%; display: block; margin: auto;" />
+            {% else %}
+            <div class="empty-space">Image</div>
+            {% endif %}
+            <!-- 이미지 업로드 폼 -->
+            <form action="/upload/" class="upload-form" enctype="multipart/form-data" method="post">
+                <input name="file" type="file" />
+                <input type="submit" value="Upload" />
+            </form>
+        </div>
+        <!-- 색상 정보 표시 영역 -->
+        <div class="info-section">
+            <div class="color-box" id="colorDisplay" style="background-color: rgb({{r}}, {{g}}, {{b}});">Color</div>
+            <p>R: <span id="displayR">{{r}}</span></p>
+            <p>G: <span id="displayG">{{g}}</span></p>
+            <p>B: <span id="displayB">{{b}}</span></p>
+            <p>Color Name: <span id="colorName">{{color_name}}</span></p>
+            <!-- <p>Classification: <span id="classification">{{classification}}</span></p> -->
+        </div>
+    </div>
+</body>
+
+<script>
+    // 업로드된 이미지와 색상 정보를 표시할 HTML 요소들을 선택
+    const imgElement = document.getElementById('uploadedImage');
+    const rElement = document.getElementById('displayR');
+    const gElement = document.getElementById('displayG');
+    const bElement = document.getElementById('displayB');
+    const colorBox = document.getElementById('colorDisplay');
+    const colorNameElement = document.getElementById('colorName');
+    const classificationElement = document.getElementById('classification');
+
+    // 이미지 요소에 클릭 이벤트 리스너 추가
+    imgElement.addEventListener('click', function (event) {
+        // 클릭한 위치의 x, y 좌표 가져오기
+        const x = event.offsetX;
+        const y = event.offsetY;
+
+        // 캔버스 요소 생성 및 이미지 크기 설정
+        const canvas = document.createElement('canvas');
+        canvas.width = imgElement.width;
+        canvas.height = imgElement.height;
+
+        // 캔버스에 이미지 그리기
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+
+        // 클릭한 위치의 픽셀 데이터 가져오기
+        const imageData = ctx.getImageData(x, y, 1, 1).data;
+
+        // R, G, B 값을 각각의 HTML 요소에 표시
+        rElement.textContent = imageData[0];
+        gElement.textContent = imageData[1];
+        bElement.textContent = imageData[2];
+
+        // 선택된 색상으로 색상 박스의 배경색 변경
+        colorBox.style.backgroundColor = `rgb(${imageData[0]}, ${imageData[1]}, ${imageData[2]})`;
+
+        // 서버에 R, G, B 값을 POST 요청으로 전송
+        fetch('/get_color_name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 'r': imageData[0], 'g': imageData[1], 'b': imageData[2] }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 서버로부터 받은 색상 이름과 분류 정보를 HTML 요소에 표시
+            colorNameElement.textContent = data.color_name;
+            classificationElement.textContent = data.classification;
+        })
+        .catch((error) => {
+            // 오류 발생 시 콘솔에 에러 로그 출력
+            console.error('Error:', error);
+        });
+    });
+</script>
+
+
+</html>
